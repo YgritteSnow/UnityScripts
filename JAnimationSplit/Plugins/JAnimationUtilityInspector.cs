@@ -4,7 +4,6 @@ using UnityEngine;
 using UnityEditor;
 
 [CustomEditor(typeof(JAnimationUtility))]
-[RequireComponent(typeof(JAnimationUtilityInspector))]
 public class JAnimationUtilityInspector : Editor {
 	JAnimationUtility thisTarget;
 	Animation m_animation;
@@ -23,11 +22,16 @@ public class JAnimationUtilityInspector : Editor {
 
 		if (GUILayout.Button("Set"))
 		{
-			string filename = @"J:\Unity\Nine\Assets\JAnimationMerge\Models\Animation\jj_run.anim";
-			bool exi = System.IO.Directory.Exists(filename);
-			AnimationClip ani = JAnimationUtility.LoadAni_rotationCurve(filename);
-			m_animation.AddClip(ani, ani.name);
-			m_animation.Play(ani.name);
+			string filename = @"J:\Unity\Nine\Assets\JAnimationSplit\Models\Animation\jj_run.anim";
+			AnimationClip cilp = JAnimationUtility.LoadAni_rotationCurve(filename);
+			m_animation.AddClip(cilp, cilp.name);
+			m_animation.Play(cilp.name);
+
+			string new_filename = "Assets/JAnimationSplit/Models/Animation/" + cilp.name + ".anim";
+			AssetDatabase.DeleteAsset(new_filename);
+			AssetDatabase.CreateAsset(cilp, new_filename);
+			AssetDatabase.SaveAssets();
+			AssetDatabase.Refresh();
 		}
 	}
 }

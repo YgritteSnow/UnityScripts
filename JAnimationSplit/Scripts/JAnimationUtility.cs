@@ -21,6 +21,7 @@ public class JAnimationUtility : MonoBehaviour
 	static public AnimationClip LoadAni_rotationCurve(string filename)
 	{
 		AnimationClip res = new AnimationClip();
+		res.legacy = true;
 
 		StreamReader sr = new StreamReader(filename, Encoding.Default);
 		string line;
@@ -38,7 +39,8 @@ public class JAnimationUtility : MonoBehaviour
 				AnimationCurve curve_y = null;
 				AnimationCurve curve_z = null;
 				AnimationCurve curve_w = null;
-				while ((curve_line = sr.ReadLine()) != null)
+				curve_line = sr.ReadLine();
+				while (curve_line != null)
 				{
 					if (Regex.Match(curve_line, @"- curve:").Success)
 					{
@@ -53,9 +55,9 @@ public class JAnimationUtility : MonoBehaviour
 							if (Regex.Match(time_line, @"time:").Success)
 							{
 								float time = float.Parse(Regex.Match(time_line, @"time:\s*([\d.\-e+]+)").Groups[1].Value);
-								GroupCollection value_group = Regex.Match(time_line = ReadIntactLine(sr), @" value:\s*{x:\s*([\d.\-e+]+),\s*y:\s*([\d.\-e+]+),\s*z:\s*([\d.\-e+]+),\s*w:\s*([\d.\-e+]+)").Groups;
-								GroupCollection inSlope_group = Regex.Match(time_line = ReadIntactLine(sr), @" inSlope:\s*{x:\s*([\d.\-e+]+),\s*y:\s*([\d.\-e+]+),\s*z:\s*([\d.\-e+]+),\s*w:\s*([\d.\-e+]+)").Groups;
-								GroupCollection outSlope_group = Regex.Match(time_line = ReadIntactLine(sr), @" outSlope:\s*{x:\s*([\d.\-e+]+),\s*y:\s*([\d.\-e+]+),\s*z:\s*([\d.\-e+]+),\s*w:\s*([\d.\-e+]+)").Groups;
+								GroupCollection value_group = Regex.Match(time_line = ReadUntilBracketMatch(sr), @" value:\s*{x:\s*([\d.\-e+]+),\s*y:\s*([\d.\-e+]+),\s*z:\s*([\d.\-e+]+),\s*w:\s*([\d.\-e+]+)").Groups;
+								GroupCollection inSlope_group = Regex.Match(time_line = ReadUntilBracketMatch(sr), @" inSlope:\s*{x:\s*([\d.\-e+]+),\s*y:\s*([\d.\-e+]+),\s*z:\s*([\d.\-e+]+),\s*w:\s*([\d.\-e+]+)").Groups;
+								GroupCollection outSlope_group = Regex.Match(time_line = ReadUntilBracketMatch(sr), @" outSlope:\s*{x:\s*([\d.\-e+]+),\s*y:\s*([\d.\-e+]+),\s*z:\s*([\d.\-e+]+),\s*w:\s*([\d.\-e+]+)").Groups;
 								if(value_group.Count < 5 || inSlope_group.Count < 5 || outSlope_group.Count < 5)
 								{
 									Debug.Log("Error!!!");
@@ -68,26 +70,28 @@ public class JAnimationUtility : MonoBehaviour
 								curve_z.AddKey(new Keyframe(time, value.z, inSlope.z, outSlope.z));
 								curve_w.AddKey(new Keyframe(time, value.w, inSlope.w, outSlope.w));
 							}
-						}
-
-						if (Regex.Match(time_line, @"path:").Success)
-						{
-							path = Regex.Match(time_line, @"path:\s*([\w.]+)").Groups[1].Value;
-							break;
+							if (Regex.Match(time_line, @"m_RotationOrder:").Success)
+							{
+								break;
+							}
 						}
 					}
-
-					if (Regex.Match(curve_line, @"m_RotationOrder:").Success)
+					else if (Regex.Match(curve_line, @"path:").Success)
+					{
+						string real_path = curve_line;
+						curve_line = ReadUntilNextColon(sr, ref real_path);
+						path = Regex.Match(real_path, @"path:\s*(.+)\s*$").Groups[1].Value;
+						res.SetCurve(path, typeof(Transform), "m_LocalRotation.x", curve_x);
+						res.SetCurve(path, typeof(Transform), "m_LocalRotation.y", curve_y);
+						res.SetCurve(path, typeof(Transform), "m_LocalRotation.z", curve_z);
+						res.SetCurve(path, typeof(Transform), "m_LocalRotation.w", curve_w);
+						continue;
+					}
+					else
 					{
 						break;
 					}
-				}
-				if (curve_x != null)
-				{
-					res.SetCurve(path, typeof(Transform), "m_LocalRotation.x", curve_x);
-					res.SetCurve(path, typeof(Transform), "m_LocalRotation.y", curve_y);
-					res.SetCurve(path, typeof(Transform), "m_LocalRotation.z", curve_z);
-					res.SetCurve(path, typeof(Transform), "m_LocalRotation.w", curve_w);
+					curve_line = sr.ReadLine();
 				}
 			}
 		}
@@ -96,8 +100,28 @@ public class JAnimationUtility : MonoBehaviour
 	}
 	#endregion
 
+	#region 工具函数：读取下一行，如果其没有冒号，说明是前一行遗留的，那么将其和前一行拼接起来。返回逻辑上的下一行的字符串
+	public static string ReadUntilNextColon(StreamReader sr, ref string origin_line)
+	{
+		string line = "";
+		while((line = sr.ReadLine()) != null)
+		{
+			if(Regex.Match(line, ":").Success)
+			{
+				return line;
+			}
+			else
+			{
+				origin_line += " " + Regex.Match(line, @"^\s*(.*)$").Groups[1].Value;
+			}
+		}
+		Debug.Log("Error! " + "colon cannot match!"); 
+		return line;
+	}
+	#endregion
+
 	#region 工具函数：读取一整行，如果有右括号遗留，那么继续读取下一行，并且拼接起来返回
-	public static string ReadIntactLine(StreamReader sr)
+	public static string ReadUntilBracketMatch(StreamReader sr)
 	{
 		string line;
 		string res_line = "";
