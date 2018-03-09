@@ -58,7 +58,7 @@ public class JAnimationLookAt : MonoBehaviour
 	Quaternion dstQuaternion = Quaternion.identity;
 	Quaternion curQuaternion = Quaternion.identity;
 
-	Camera cameraNode;
+	public Camera cameraNode;
 
 
 
@@ -73,8 +73,8 @@ public class JAnimationLookAt : MonoBehaviour
 		inited = false;
 
 		// 初始化相机
-		this.cameraNode = camera;
-		if (!camera)
+		//this.cameraNode = camera;
+		if (!this.cameraNode)
 		{
 			Debug.LogError("Camera is null!");
 			return;
